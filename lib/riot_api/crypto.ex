@@ -17,6 +17,18 @@ defmodule RiotApi.Crypto do
           {:error, :config_error}
     end
   end
+  def verify(data, signature_string) do
+    with {:ok, secret_key_binary} <- fetch_and_decode_secret() do
+      @signer.verify(data, signature_string, secret_key_binary)
+    else
+      {:error, :missing_key} ->
+        Logger.error("HMAC Secret Key is not configured for verification!")
+        false # Config error -> Verification fails
+      {:error, :invalid_hex} ->
+        Logger.error("HMAC Secret Key in configuration is not valid Hexadecimal for verification!")
+        false # Config error -> Verification fails
+    end
+  end
 
   defp fetch_and_decode_secret() do
     case Application.get_env(:riot_api, :hmac_secret) do
@@ -32,7 +44,6 @@ defmodule RiotApi.Crypto do
         {:error, :invalid_hex}
     end
   end
-
   defdelegate encrypt(data), to: @encryptor
   defdelegate decrypt(data), to: @encryptor
 

@@ -15,14 +15,45 @@ defmodule RiotApiWeb.CryptoController do
 
   # Case where we don't receive a map from our Parser
   def sign(conn, params) do
-    IO.inspect(params, label: "SIGN_CLAUSE_2_PARAMS") # Add this line
-
     Logger.error("Invalid payload format for sign action: Expected a JSON object (map), received: #{inspect(params)}")
     conn
     |> put_status(:bad_request)
     |> json(%{error: "Invalid payload format. Expected a JSON object."})
   end
   # endregion
+
+  #region Verify
+  # Clause 1: Handles valid input structure
+  def verify(conn, %{"signature" => signature_string, "data" => data}) when is_map(data) do
+    case Crypto.verify(data, signature_string) do
+      true ->
+        # Signature is valid (and config was ok)
+        send_resp(conn, :no_content, "") # 204 No Content
+      false ->
+        # Signature is invalid OR there was a config error during verification
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "Invalid signature"}) # 400 Bad Request
+    end
+  end
+
+  # Clause 2: Handles data not being a map
+  def verify(conn, %{"signature" => _signature, "data" => not_a_map}) do
+     Logger.warning("Received verify request where 'data' is not a map: #{inspect(not_a_map)}")
+     conn
+     |> put_status(:bad_request)
+     |> json(%{error: "Invalid payload: 'data' must be an object"})
+  end
+
+  # Clause 3: Handles missing keys
+  def verify(conn, _params) do
+    conn
+    |> put_status(:bad_request)
+    |> json(%{error: "Invalid payload: requires 'signature' and 'data' keys"})
+  end
+  # --- endregion ---
+
+
   # region Encrypt
   def encrypt(conn, params) when is_map(params) do
     encrypted_data = Crypto.encrypt(params)

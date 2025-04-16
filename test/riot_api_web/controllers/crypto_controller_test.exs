@@ -218,9 +218,6 @@ end
        assert conn.status == 200
        assert json_response(conn, 200) == %{}
      end
-  # endregion
-
-
   end
-
+  # endregion
 end

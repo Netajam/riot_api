@@ -81,7 +81,7 @@ defmodule RiotApi.Crypto.Base64EncoderTest do
 
       expected = %{
         "name" => Base.encode64(Jason.encode!("Mixed Data")),
-        # --- Use inspect/1 for expected value calculation ---
+        # Use inspect/1 for expected value calculation
         "calculator" => Base.encode64(inspect(my_fun)),
         "count" => Base.encode64(Jason.encode!(99))
       }
@@ -108,7 +108,7 @@ defmodule RiotApi.Crypto.Base64EncoderTest do
        assert result["key3"] == Base.encode64(Jason.encode!("v3"))
     end
   end
-  # endregion 
+  # endregion
   # region Decrypt Tests
   describe "decrypt/1" do
     test "returns {:ok, %{}} for an empty map" do
