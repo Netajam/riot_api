@@ -5,8 +5,12 @@ defmodule RiotApiWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/api", RiotApiWeb do
+  scope "/api/v1", RiotApiWeb do
     pipe_through :api
+    post "/encrypt", CryptoController, :encrypt
+    post "/decrypt", CryptoController, :decrypt
+    post "/sign", CryptoController, :sign
+    post "/verify", CryptoController, :verify
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
