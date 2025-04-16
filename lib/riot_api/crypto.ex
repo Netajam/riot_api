@@ -1,5 +1,6 @@
 defmodule RiotApi.Crypto do
   @signer RiotApi.Crypto.HmacSigner
+  @encryptor RiotApi.Crypto.Base64Encoder
   require Logger
 
   def sign(data) do
@@ -31,4 +32,6 @@ defmodule RiotApi.Crypto do
         {:error, :invalid_hex}
     end
   end
+
+  defdelegate encrypt(data), to: @encryptor
 end

@@ -23,4 +23,10 @@ defmodule RiotApiWeb.CryptoController do
     |> json(%{error: "Invalid payload format. Expected a JSON object."})
   end
   # endregion
+  # region Encrypt
+  def encrypt(conn, params) do
+    encrypted_data = Crypto.encrypt(params)
+    json(conn, encrypted_data)
+  end
+  # endregion Encrypt
 end
