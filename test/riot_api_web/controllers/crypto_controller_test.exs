@@ -4,6 +4,7 @@ defmodule RiotApiWeb.CryptoControllerTest do
 
   @endpoint RiotApiWeb.Endpoint
   @encrypt_api_path "/api/v1/encrypt"
+  @decrypt_api_path "/api/v1/decrypt"
   @sign_api_path "/api/v1/sign"
 
 
@@ -39,7 +40,7 @@ defmodule RiotApiWeb.CryptoControllerTest do
     }
   }
    # endregion
-  ## region --- Data for /encrypt ---
+  ## region --- Data for /encrypt & /decrypt ---
    @encrypt_data_basic %{
     "string" => "hello world",
     "integer" => 987,
@@ -48,7 +49,6 @@ defmodule RiotApiWeb.CryptoControllerTest do
     "nothing" => nil
   }
 
-  # Pre-calculate expected encrypted values for basic data
   @expected_encrypted_basic %{
     "string" => Base.encode64(Jason.encode!("hello world")),
     "integer" => Base.encode64(Jason.encode!(987)),
@@ -65,13 +65,38 @@ defmodule RiotApiWeb.CryptoControllerTest do
     }
   }
 
-  # Pre-calculate expected encrypted values for nested data
+  @expected_encrypted_nested %{
+    "id" => Base.encode64(Jason.encode!("xyz-789")),
+    "details" => Base.encode64(Jason.encode!(%{ "status" => "active", "count" => 55 }))
+  }
+
+  @original_basic %{
+    "string" => "hello world",
+    "integer" => 987,
+    "boolean" => true,
+    "list" => ["a", 1, nil],
+    "nothing" => nil
+  }
+  @expected_encrypted_basic %{
+    "string" => Base.encode64(Jason.encode!("hello world")),
+    "integer" => Base.encode64(Jason.encode!(987)),
+    "boolean" => Base.encode64(Jason.encode!(true)),
+    "list" => Base.encode64(Jason.encode!(["a", 1, nil])),
+    "nothing" => Base.encode64(Jason.encode!(nil))
+  }
+
+  @original_nested %{
+    "id" => "xyz-789",
+    "details" => %{ "status" => "active", "count" => 55 }
+  }
   @expected_encrypted_nested %{
     "id" => Base.encode64(Jason.encode!("xyz-789")),
     "details" => Base.encode64(Jason.encode!(%{ "status" => "active", "count" => 55 }))
   }
 
   @empty_data %{}
+  # --- End Test Data ---
+
   ## endregion
   ## endregion TestData
 
@@ -136,4 +161,66 @@ defmodule RiotApiWeb.CryptoControllerTest do
       end
   ## endregion
 end
+# region Decrypt Tests ===
+  describe "POST " <> @decrypt_api_path do
+    test "returns 200 and decrypts previously encrypted basic types", %{conn: conn} do
+      conn = post(conn, @decrypt_api_path, @expected_encrypted_basic)
+      assert conn.status == 200
+      assert json_response(conn, 200) == @original_basic
+    end
+
+    test "returns 200 and decrypts previously encrypted nested maps", %{conn: conn} do
+      conn = post(conn, @decrypt_api_path, @expected_encrypted_nested)
+      assert conn.status == 200
+      assert json_response(conn, 200) == @original_nested
+    end
+
+    test "returns 200 and leaves non-encrypted values unchanged", %{conn: conn} do
+      mixed_input = %{
+        "encrypted_string" => @expected_encrypted_basic["string"],
+        "plain_string" => "keep me as is",
+        "plain_number" => 12345,
+        "encrypted_list" => @expected_encrypted_basic["list"],
+        "plain_boolean" => false
+      }
+      expected_output = %{
+        "encrypted_string" => @original_basic["string"],
+        "plain_string" => "keep me as is",
+        "plain_number" => 12345,
+        "encrypted_list" => @original_basic["list"],
+        "plain_boolean" => false
+      }
+
+      conn = post(conn, @decrypt_api_path, mixed_input)
+      assert conn.status == 200
+      assert json_response(conn, 200) == expected_output
+    end
+
+    test "returns 200 and leaves invalid base64 strings unchanged", %{conn: conn} do
+       invalid_b64_input = %{
+         "valid_encrypted" => @expected_encrypted_basic["string"],
+         "invalid_string" => "!!ThisIsNotBase64!!",
+         "another_plain" => "hello"
+       }
+       expected_output = %{
+          "valid_encrypted" => @original_basic["string"], # Use defined original value
+          "invalid_string" => "!!ThisIsNotBase64!!",
+          "another_plain" => "hello"
+       }
+
+       conn = post(conn, @decrypt_api_path, invalid_b64_input)
+       assert conn.status == 200
+       assert json_response(conn, 200) == expected_output
+    end
+
+    test "returns 200 and empty map for an empty JSON object payload", %{conn: conn} do
+       conn = post(conn, @decrypt_api_path, @empty_data)
+       assert conn.status == 200
+       assert json_response(conn, 200) == %{}
+     end
+  # endregion
+
+
+  end
+
 end
