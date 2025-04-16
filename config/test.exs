@@ -18,3 +18,4 @@ config :logger, level: :warning
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+config :riot_api, :hmac_secret,"9abac8b0c5aee8aff60cf885b4442d76adfd9aff643b10c4b5bae58e28c7e88f"

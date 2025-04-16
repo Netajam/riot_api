@@ -6,11 +6,8 @@ defmodule RiotApi.Crypto.HmacSigner do
 
   @impl RiotApi.Crypto.Signer
   def sign(data, secret) when is_map(data) and is_binary(secret) do
-    # check that all keys are strings
     string_keyed_data = ensure_string_keys(data)
-    # Ordering the data, initial order of data not affecting the signature anymore
     canonical_binary = canonicalize(string_keyed_data)
-    # Depends on @hmac_alg and :crypto module
     hmac_binary = :crypto.mac(:hmac, @hmac_alg, secret, canonical_binary)
     # Encode the binary
     encode_signature(hmac_binary)
