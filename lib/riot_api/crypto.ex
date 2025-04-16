@@ -34,4 +34,6 @@ defmodule RiotApi.Crypto do
   end
 
   defdelegate encrypt(data), to: @encryptor
+  defdelegate decrypt(data), to: @encryptor
+
 end

@@ -24,9 +24,39 @@ defmodule RiotApiWeb.CryptoController do
   end
   # endregion
   # region Encrypt
-  def encrypt(conn, params) do
+  def encrypt(conn, params) when is_map(params) do
     encrypted_data = Crypto.encrypt(params)
     json(conn, encrypted_data)
-  end
-  # endregion Encrypt
+ end
+
+ def encrypt(conn, params) do
+    Logger.error("Invalid payload format for encrypt action: Expected a JSON object (map), received: #{inspect(params)}")
+    conn
+    |> put_status(:bad_request)
+    |> json(%{error: "Invalid payload format. Expected a JSON object."})
+ end
+ # endregion
+
+ # region Decrypt
+ def decrypt(conn, params) when is_map(params) do
+   case Crypto.decrypt(params) do
+     {:ok, decrypted_data} ->
+       json(conn, decrypted_data)
+     {:error, reason} ->
+       # Log the specific reason from the crypto module
+       Logger.error("Decryption failed: #{inspect(reason)}")
+       conn
+       |> put_status(:bad_request) # 400 is appropriate for bad input data
+       |> json(%{error: "Decryption failed or invalid data provided"})
+   end
+ end
+
+ def decrypt(conn, params) do
+   Logger.error("Invalid payload format for decrypt action: Expected a JSON object (map), received: #{inspect(params)}")
+   conn
+   |> put_status(:bad_request)
+   |> json(%{error: "Invalid payload format. Expected a JSON object."})
+ end
+ # endregion
+
 end
