@@ -1,0 +1,36 @@
+ARG ELIXIR_VERSION=1.18.3
+ARG OTP_VERSION=27
+FROM elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}
+
+ENV MIX_ENV=dev \
+    LANG=C.UTF-8 \
+    PHX_SERVER=true \
+    SHELL=/bin/bash
+
+# Node.js/npm are needed for assets (esbuild/tailwind)
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        curl \
+        inotify-tools \ 
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Copy dependency definition files
+COPY mix.exs mix.lock ./
+
+# Fetch all deps, including :dev and :test
+RUN mix deps.get && \
+    mix deps.compile
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose the default Phoenix port
+EXPOSE 4000
+

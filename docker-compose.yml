@@ -1,0 +1,27 @@
+services:
+  api_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args: 
+        ELIXIR_VERSION: 1.18.3
+        OTP_VERSION: 27
+    container_name: riot_api_dev
+    volumes:
+      - ./lib:/app/lib:delegated 
+      - ./config:/app/config:delegated
+      - ./priv:/app/priv:delegated
+      - ./test:/app/test:delegated
+      - ./assets:/app/assets:delegated 
+      - deps_volume:/app/deps
+      - build_volume:/app/_build
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+
+volumes:
+  deps_volume:
+  build_volume:
