@@ -6,6 +6,7 @@ defmodule RiotApiWeb.CryptoControllerTest do
   @encrypt_api_path "/api/v1/encrypt"
   @decrypt_api_path "/api/v1/decrypt"
   @sign_api_path "/api/v1/sign"
+  @verify_api_path "/api/v1/verify"
 
 
 
@@ -40,7 +41,7 @@ defmodule RiotApiWeb.CryptoControllerTest do
     }
   }
    # endregion
-  ## region --- Data for /encrypt & /decrypt ---
+  ## region Data for /encrypt & /decrypt
    @encrypt_data_basic %{
     "string" => "hello world",
     "integer" => 987,
@@ -93,10 +94,11 @@ defmodule RiotApiWeb.CryptoControllerTest do
     "id" => Base.encode64(Jason.encode!("xyz-789")),
     "details" => Base.encode64(Jason.encode!(%{ "status" => "active", "count" => 55 }))
   }
-
   @empty_data %{}
-  # --- End Test Data ---
-
+  ## endregion
+  # region data for /verify
+  @verify_data %{ "message" => "Verify this payload", "timestamp" => 1616161616 }
+  @verify_data_reordered %{ "timestamp" => 1616161616, "message" => "Verify this payload" }
   ## endregion
   ## endregion TestData
 
@@ -220,4 +222,94 @@ end
      end
   end
   # endregion
+    # === /api/v1/verify Tests ===
+      describe "POST " <> @verify_api_path do
+        setup %{conn: conn} do
+          conn_sign_main = post(conn, @sign_api_path, @verify_data)
+          valid_sig_main = json_response(conn_sign_main, 200)["signature"]
+
+          # Sign the empty data
+          conn_sign_empty = post(conn, @sign_api_path, @empty_data)
+          valid_sig_empty = json_response(conn_sign_empty, 200)["signature"]
+
+          # Check if signatures were actually generated
+          if is_nil(valid_sig_main) or is_nil(valid_sig_empty) do
+            raise "Failed to generate valid signatures in setup block for verify tests. Check /sign endpoint functionality and test secret."
+          end
+
+          # Pass signatures into the test context
+          %{
+            conn: conn,
+            valid_sig_main: valid_sig_main,
+            valid_sig_empty: valid_sig_empty
+          }
+        end
+
+        test "returns 204 No Content for valid signature and data", %{conn: conn, valid_sig_main: sig} do
+          payload = %{"signature" => sig, "data" => @verify_data}
+          conn = post(conn, @verify_api_path, payload)
+          assert conn.status == 204
+          assert conn.resp_body == ""
+        end
+
+        test "returns 204 No Content for valid signature when data key order differs", %{conn: conn, valid_sig_main: sig} do
+          payload = %{"signature" => sig, "data" => @verify_data_reordered} # Use same sig, reordered data
+          conn = post(conn, @verify_api_path, payload)
+          assert conn.status == 204
+        end
+
+         test "returns 204 No Content for valid signature and empty data object", %{conn: conn, valid_sig_empty: sig} do
+           payload = %{"signature" => sig, "data" => @empty_data}
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 204
+         end
+
+        test "returns 400 Bad Request for invalid signature string", %{conn: conn, valid_sig_main: _sig} do
+           payload = %{"signature" => "a" <> Base.encode64("clearlywrong") <> "z", "data" => @verify_data}
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid signature"}
+        end
+
+         test "returns 400 Bad Request for tampered data", %{conn: conn, valid_sig_main: sig} do
+           tampered_data = Map.put(@verify_data, "message", "Tampered Message!")
+           payload = %{"signature" => sig, "data" => tampered_data}
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid signature"}
+        end
+
+        test "returns 400 Bad Request when signature key is missing", %{conn: conn} do
+           payload = %{"data" => @verify_data} # Missing "signature"
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid payload: requires 'signature' and 'data' keys"}
+         end
+
+        test "returns 400 Bad Request when data key is missing", %{conn: conn, valid_sig_main: sig} do
+           payload = %{"signature" => sig} # Missing "data"
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid payload: requires 'signature' and 'data' keys"}
+         end
+
+        test "returns 400 Bad Request when data value is not an object", %{conn: conn, valid_sig_main: sig} do
+           payload = %{"signature" => sig, "data" => "this is just a string"}
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid payload: 'data' must be an object"}
+         end
+
+         test "returns 400 Bad Request when HMAC secret is not configured", %{conn: conn, valid_sig_main: sig} do
+           original_key = Application.get_env(:riot_api, :hmac_secret)
+           Application.delete_env(:riot_api, :hmac_secret)
+           on_exit(fn -> if original_key, do: Application.put_env(:riot_api, :hmac_secret, original_key) end)
+           payload = %{"signature" => sig, "data" => @verify_data}
+           conn = post(conn, @verify_api_path, payload)
+           assert conn.status == 400
+           assert json_response(conn, 400) == %{"error" => "Invalid signature"}
+         end
+
+      end
+      # endregion
 end
