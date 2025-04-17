@@ -1,18 +1,34 @@
-# RiotApi
+# Riot API Implementation
 
-To start your Phoenix server:
+## Overview
 
-  * Run `mix setup` to install and setup dependencies
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+This project implements an HTTP API with four endpoints as specified by the Riot Take-Home Technical Challenge. It provides basic operations for data manipulation:
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+1.  **Encryption:** Encodes top-level (1 detph level) JSON values using Base64.
+2.  **Decryption:** Decodes Base64 values, leaving others untouched.
+3.  **Signing:** Generates an HMAC-SHA256 signature based on the JSON object's value (order-independent).
+4.  **Verification:** Validates a signature against provided JSON data.
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+Built with Elixir and the Phoenix Framework.
 
-## Learn more
+## API Endpoints
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+All endpoints accept `POST` requests with `Content-Type: application/json`.
+
+*   **`/api/v1/encrypt`**
+    *   **Input:** Any JSON object.
+    *   **Output:** JSON object with depth-1 property values Base64 encoded. *(Note: Base64 is used for simplicity per challenge requirements, not for real security).*
+*   **`/api/v1/decrypt`**
+    *   **Input:** JSON object, potentially with Base64 encoded values.
+    *   **Output:** JSON object with Base64 values decoded back to their original types. Non-Base64 values are returned unchanged.
+*   **`/api/v1/sign`**
+    *   **Input:** Any JSON object.
+    *   **Output:** `{"signature": "..."}` containing the Base64 encoded HMAC-SHA256 signature. The signature depends only on the *value* of the JSON, not the order of keys.
+*   **`/api/v1/verify`**
+    *   **Input:** `{"signature": "...", "data": { ... }}`
+    *   **Output:**
+        *   `204 No Content` if the signature is valid for the data.
+        *   `400 Bad Request` if the signature is invalid or the payload structure is incorrect.
+    
+# Additional
+*For developer setup, running the application (development/production), and testing instructions, please see [`DEV_README.md`](./DEV_README.md).*
