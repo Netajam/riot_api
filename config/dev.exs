@@ -58,5 +58,3 @@ config :phoenix, :plug_init_mode, :runtime
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# HMAC
-config :riot_api, :hmac_secret,"daf3f614286db9b72fe11a5ed99d3014c17e7b538edf0b5677d4c846dfa79a8d"
