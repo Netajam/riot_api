@@ -6,6 +6,7 @@ import Config
 # and secrets from environment variables or elsewhere. Do not define
 # any compile-time configuration in here, as it won't be applied.
 # The block below contains prod specific runtime configuration.
+app_name = :riot_api
 
 # ## Using releases
 #
@@ -19,6 +20,41 @@ import Config
 if System.get_env("PHX_SERVER") do
   config :riot_api, RiotApiWeb.Endpoint, server: true
 end
+secret_key_base =
+  System.get_env("SECRET_KEY_BASE") ||
+    case config_env() do
+      :prod ->
+        raise """
+        Runtime environment variable SECRET_KEY_BASE is missing for :prod.
+        Generate one with `mix phx.gen.secret` and set it in the production environment.
+        """
+      :dev ->
+        raise """
+        Runtime environment variable SECRET_KEY_BASE is missing for :dev.
+        Generate one with `mix phx.gen.secret` and add it to your .env file.
+        """
+      :test ->
+        nil # Let test.exs handle it (it has its own hardcoded value)
+    end
+
+# Configure secret_key_base for all environments EXCEPT :test
+if config_env() != :test do
+  config app_name, RiotApiWeb.Endpoint, secret_key_base: secret_key_base
+end
+hmac_secret =
+  System.get_env("HMAC_SECRET") ||
+    case config_env() do
+      :prod ->
+        raise "Runtime environment variable HMAC_SECRET is missing for :prod"
+      :dev ->
+        raise "Runtime environment variable HMAC_SECRET is missing for :dev"
+      :test ->
+        nil # handled by test.exs
+    end
+if config_env() != :test do
+  config app_name, :hmac_secret, hmac_secret
+end
+
 
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
@@ -26,12 +62,7 @@ if config_env() == :prod do
   # want to use a different value for prod and you most likely don't want
   # to check this value into version control, so we use an environment
   # variable instead.
-  secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
+
 
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
@@ -47,8 +78,8 @@ if config_env() == :prod do
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
-    ],
-    secret_key_base: secret_key_base
+    ]
+
 
   # ## SSL Support
   #
